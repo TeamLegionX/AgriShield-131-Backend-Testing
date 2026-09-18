@@ -50,3 +50,12 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $PRODUCTION_PAT" \
             https://api.github.com/repos/TeamLegionX/AgriShield-131-Backend-Production
+                  - name: Verify Production Repository Access
+        env:
+          PRODUCTION_PAT: ${{ secrets.PRODUCTION_PAT }}
+        run: |
+          curl -sSf \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $PRODUCTION_PAT" \
+            https://api.github.com/repos/TeamLegionX/AgriShield-131-Backend-Production
+          echo "✅ Production repository access confirmed"
