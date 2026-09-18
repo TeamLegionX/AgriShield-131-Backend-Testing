@@ -41,3 +41,4 @@ jobs:
         run: |
           git remote add production "https://x-access-token:${PRODUCTION_PAT}@github.com/TeamLegionX/AgriShield-131-Backend-Production.git"
           git push production HEAD:main
+           git push --force production HEAD:main
