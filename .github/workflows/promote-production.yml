@@ -42,3 +42,11 @@ jobs:
           git remote add production "https://x-access-token:${PRODUCTION_PAT}@github.com/TeamLegionX/AgriShield-131-Backend-Production.git"
           git push production HEAD:main
           
+      - name: Verify Production Repository Access
+        env:
+          PRODUCTION_PAT: ${{ secrets.PRODUCTION_PAT }}
+        run: |
+          curl -i \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $PRODUCTION_PAT" \
+            https://api.github.com/repos/TeamLegionX/AgriShield-131-Backend-Production
