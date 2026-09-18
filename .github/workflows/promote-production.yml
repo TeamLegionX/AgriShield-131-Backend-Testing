@@ -30,7 +30,7 @@ jobs:
           PRODUCTION_PAT: ${{ secrets.PRODUCTION_PAT }}
         run: |
           if [ -z "$PRODUCTION_PAT" ]; then
-            echo "❌ PRODUCTION_PAT is missing or unavailable"
+            echo "❌ PRODUCTION_PAT is missing"
             exit 1
           fi
           echo "✅ PRODUCTION_PAT is available"
@@ -39,7 +39,5 @@ jobs:
         env:
           PRODUCTION_PAT: ${{ secrets.PRODUCTION_PAT }}
         run: |
-          git remote add production https://github.com/TeamLegionX/AgriShield-131-Backend-Production.git
-
-          git -c http.extraheader="AUTHORIZATION: bearer $PRODUCTION_PAT" \
-            push production HEAD:main
+          git remote add production "https://x-access-token:${PRODUCTION_PAT}@github.com/TeamLegionX/AgriShield-131-Backend-Production.git"
+          git push production HEAD:main
