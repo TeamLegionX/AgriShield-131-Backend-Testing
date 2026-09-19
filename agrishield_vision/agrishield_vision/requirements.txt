@@ -1,0 +1,21 @@
+# Core (pin torch/torchvision to a matching pair for your CUDA build)
+torch>=2.4
+torchvision>=0.19
+timm>=1.0.9
+numpy>=1.26
+pandas>=2.1
+pillow>=10.2
+pyyaml>=6.0
+requests>=2.31
+
+# Optional - detector tier
+ultralytics>=8.3        # YOLOv8n leaf detector
+
+# Optional - export
+onnx>=1.16
+onnxruntime>=1.18
+litert-torch            # preferred PyTorch -> TFLite path (formerly ai-edge-torch)
+
+# Optional - plots for the results deck
+matplotlib>=3.8
+scikit-learn>=1.4       # only for cross-checking metrics; not required at runtime
