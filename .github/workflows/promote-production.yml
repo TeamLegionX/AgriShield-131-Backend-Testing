@@ -1,0 +1,61 @@
+name: Promote Backend to Production
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    name: Sync Testing → Production
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout Testing Repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Check Production Token
+        env:
+          PRODUCTION_PAT: ${{ secrets.PRODUCTION_PAT }}
+        run: |
+          if [ -z "$PRODUCTION_PAT" ]; then
+            echo "❌ PRODUCTION_PAT is missing"
+            exit 1
+          fi
+          echo "✅ PRODUCTION_PAT is available"
+
+      - name: Push Testing Code to Production Repository
+        env:
+          PRODUCTION_PAT: ${{ secrets.PRODUCTION_PAT }}
+        run: |
+          git remote add production "https://x-access-token:${PRODUCTION_PAT}@github.com/TeamLegionX/AgriShield-131-Backend-Production.git"
+          git push production HEAD:main
+          
+      - name: Verify Production Repository Access
+        env:
+          PRODUCTION_PAT: ${{ secrets.PRODUCTION_PAT }}
+        run: |
+          curl -i \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $PRODUCTION_PAT" \
+            https://api.github.com/repos/TeamLegionX/AgriShield-131-Backend-Production
+                  - name: Verify Production Repository Access
+        env:
+          PRODUCTION_PAT: ${{ secrets.PRODUCTION_PAT }}
+        run: |
+          curl -sSf \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $PRODUCTION_PAT" \
+            https://api.github.com/repos/TeamLegionX/AgriShield-131-Backend-Production
+          echo "✅ Production repository access confirmed"
