@@ -272,34 +272,48 @@ import json
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 @app.post("/voice-command")
-async def process_voice_command(file: UploadFile = File(...)):
+async def process_voice_command(file: UploadFile = File(...), currentScreen: str = Form(default="Unknown")):
     try:
         contents = await file.read()
         
         model = genai.GenerativeModel("gemini-1.5-flash")
         
-        prompt = """
-        You are the voice assistant for the AgriShield farming app. You are a helpful, friendly, and human-like assistant (like a friend).
-        The user will speak in any language (Hindi, Marathi, English, Kannada, etc).
-        Your job is to understand their intent and map it to a screen in our app.
-        Available screens are:
+        prompt = f"""
+        You are the voice assistant for the AgriShield farming app. You are a helpful, empathetic, and highly intelligent human-like friend.
+        The user will speak in any language (Hindi, Marathi, English, Kannada, etc). You must reply in the language they used, using casual, friendly conversational tones (e.g. "Bhai", "Dost").
+
+        CRITICAL CONTEXT:
+        The user is CURRENTLY on the app screen: "{currentScreen}"
+
+        Your job is to understand their intent. They might want to:
+        1. NAVIGATE to another page.
+        2. ASK a question about what is on their current screen or what they should do next.
+        3. Just chat.
+
+        Available screens they can navigate to:
         - "Onboarding" (Welcome/Onboarding page)
-        - "Login" (Login page, account login)
+        - "Login" (Login page)
         - "Home" (Main dashboard)
         - "CameraScan" (Take a photo of a leaf to detect disease, or "open scanner")
         - "MRLSprayHistory" (Check pesticide safe spray history)
         - "ReportsHistory" (View past diagnosis reports)
         - "Profile" (User profile)
         
-        If they want to login, go to Login.
-        If they want to scan a crop, go to CameraScan.
-        If they want to see old reports, go to ReportsHistory.
-        If they want to check spray or pesticide safety, go to MRLSprayHistory.
-        
-        Return ONLY a JSON object in this exact format:
-        {"action": "navigate", "screen": "ScreenName", "reply": "A very short 1-sentence friendly confirmation in the language they spoke, like you are talking to a friend"}
-        If you don't understand or it's unrelated, return:
-        {"action": "unknown", "reply": "A friendly short message saying you didn't understand and asking them to repeat, in the language they spoke."}
+        IF THEY ASK ABOUT THE CURRENT SCREEN:
+        Explain what they can do on this screen.
+        Example: If currentScreen is "Login" and they ask "isme kya kya hai?" -> Reply: "Yahan aapko apna mobile number aur password daalna hoga login karne ke liye bhai."
+        Example: If currentScreen is "Home" -> Reply: "Bhai yeh main dashboard hai, yahan se aap crop scan kar sakte ho ya apni reports dekh sakte ho."
+
+        Return ONLY a JSON object in this exact format. Do NOT include markdown blocks, just the raw JSON:
+
+        If they want to NAVIGATE:
+        {{"action": "navigate", "screen": "ScreenName", "reply": "A friendly confirmation that you are opening it."}}
+
+        If they want to CONVERSE or ask about the current screen:
+        {{"action": "converse", "reply": "Your intelligent, context-aware answer explaining the screen or answering their query."}}
+
+        If you don't understand:
+        {{"action": "unknown", "reply": "Bhai thoda clear bologe? Samajh nahi aaya."}}
         """
         
         response = model.generate_content([
