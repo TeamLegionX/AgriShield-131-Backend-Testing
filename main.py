@@ -9,43 +9,51 @@ import io
 
 # --- AgriShield Vision v2 Integration ---
 import torch
-import torchvision.transforms as T
-from agrishield.taxonomy import load_taxonomy
-from agrishield.models.student import build_student, StudentConfig, ExportWrapper
-from agrishield.inference.pipeline import DiagnosisPipeline, PolicyConfig
-from agrishield.inference.calibration import CalibrationArtifacts
+torch.set_grad_enabled(False)
+torch.set_num_threads(1)
 
-print("Initializing AgriShield Vision v2 Pipeline (Dummy/Random Weights)...")
-tax = load_taxonomy("configs/taxonomy.yaml")
-student_cfg = StudentConfig(
-    backbone="mnv4s", n_classes=tax.n_classes, n_crops=tax.n_crops, class_to_crop=tax.class_to_crop, pretrained=False
-)
-model = build_student(student_cfg)
-wrapper = ExportWrapper(model)
-wrapper.eval()
+pipeline_instance = None
 
-calibration = CalibrationArtifacts(
-    temperature=1.0,
-    confident_threshold=0.8,
-    tentative_threshold=0.5,
-    ece_before=0.0,
-    ece_after=0.0,
-    coverage_at_confident=1.0
-)
-transform = T.Compose([
-    T.Resize((224, 224)),
-    T.ToTensor()
-])
-pipeline = DiagnosisPipeline(
-    model=wrapper,
-    taxonomy=tax,
-    calibration=calibration,
-    transform=transform,
-    device="cpu"
-)
-print("Pipeline initialized successfully.")
+def get_pipeline():
+    global pipeline_instance
+    if pipeline_instance is None:
+        import torchvision.transforms as T
+        from agrishield.taxonomy import load_taxonomy
+        from agrishield.models.student import build_student, StudentConfig, ExportWrapper
+        from agrishield.inference.pipeline import DiagnosisPipeline
+        from agrishield.inference.calibration import CalibrationArtifacts
+        
+        print("Initializing AgriShield Vision v2 Pipeline (Dummy/Random Weights)...")
+        tax = load_taxonomy("configs/taxonomy.yaml")
+        student_cfg = StudentConfig(
+            backbone="mnv4s", n_classes=tax.n_classes, n_crops=tax.n_crops, class_to_crop=tax.class_to_crop, pretrained=False
+        )
+        model = build_student(student_cfg)
+        wrapper = ExportWrapper(model)
+        wrapper.eval()
+        
+        calibration = CalibrationArtifacts(
+            temperature=1.0,
+            confident_threshold=0.8,
+            tentative_threshold=0.5,
+            ece_before=0.0,
+            ece_after=0.0,
+            coverage_at_confident=1.0
+        )
+        transform = T.Compose([
+            T.Resize((224, 224)),
+            T.ToTensor()
+        ])
+        pipeline_instance = DiagnosisPipeline(
+            model=wrapper,
+            taxonomy=tax,
+            calibration=calibration,
+            transform=transform,
+            device="cpu"
+        )
+        print("Pipeline initialized successfully.")
+    return pipeline_instance
 
-# from mrl.mrl_assessment import assess_crop_safety
 
 app = FastAPI(title="AgriShield Backend")
 from fastapi.middleware.cors import CORSMiddleware
@@ -235,6 +243,7 @@ async def diagnose(file: UploadFile = File(...), mobile_number: str = Form(None)
 
     try:
         # Run new pipeline
+        pipeline = get_pipeline()
         diagnosis_result = pipeline.diagnose(image, want_lesions=True)
         response_data = diagnosis_result.to_dict()
 
