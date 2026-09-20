@@ -9,3 +9,7 @@ grad-cam
 timm>=1.0.9
 pyyaml>=6.0
 ultralytics>=8.3
+
+motor
+pymongo
+google-generativeai
