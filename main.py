@@ -26,9 +26,11 @@ wrapper.eval()
 
 calibration = CalibrationArtifacts(
     temperature=1.0,
-    measured_ece=0.0,
-    measured_auroc={},
-    reject_threshold=0.5
+    confident_threshold=0.8,
+    tentative_threshold=0.5,
+    ece_before=0.0,
+    ece_after=0.0,
+    coverage_at_confident=1.0
 )
 transform = T.Compose([
     T.Resize((224, 224)),
