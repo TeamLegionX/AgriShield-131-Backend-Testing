@@ -7,7 +7,42 @@ from pydantic import BaseModel
 from PIL import Image
 import io
 
-from diagnose import predict, generate_heatmap
+# --- AgriShield Vision v2 Integration ---
+import torch
+import torchvision.transforms as T
+from agrishield.taxonomy import load_taxonomy
+from agrishield.models.student import build_student, StudentConfig, ExportWrapper
+from agrishield.inference.pipeline import DiagnosisPipeline, PolicyConfig
+from agrishield.inference.calibration import CalibrationArtifacts
+
+print("Initializing AgriShield Vision v2 Pipeline (Dummy/Random Weights)...")
+tax = load_taxonomy("configs/taxonomy.yaml")
+student_cfg = StudentConfig(
+    backbone="mnv4s", n_classes=tax.n_classes, n_crops=tax.n_crops, class_to_crop=tax.class_to_crop, pretrained=False
+)
+model = build_student(student_cfg)
+wrapper = ExportWrapper(model)
+wrapper.eval()
+
+calibration = CalibrationArtifacts(
+    temperature=1.0,
+    measured_ece=0.0,
+    measured_auroc={},
+    reject_threshold=0.5
+)
+transform = T.Compose([
+    T.Resize((224, 224)),
+    T.ToTensor()
+])
+pipeline = DiagnosisPipeline(
+    model=wrapper,
+    taxonomy=tax,
+    calibration=calibration,
+    transform=transform,
+    device="cpu"
+)
+print("Pipeline initialized successfully.")
+
 # from mrl.mrl_assessment import assess_crop_safety
 
 app = FastAPI(title="AgriShield Backend")
@@ -196,82 +231,27 @@ async def diagnose(file: UploadFile = File(...), mobile_number: str = Form(None)
     contents = await file.read()
     image = Image.open(io.BytesIO(contents)).convert("RGB")
 
-    if not GEMINI_API_KEY:
-        return JSONResponse(
-            status_code=500,
-            content={"error": "config_error", "message": "GEMINI_API_KEY is not configured on the server. Please add it to your environment variables."}
-        )
-
     try:
-        # Resize image for Gemini to make it fast
-        gemini_image = image.copy()
-        gemini_image.thumbnail((512, 512))
-        
-        prompt = """
-        You are an expert agricultural plant pathologist. Analyze this leaf image and identify the crop and any disease present.
-        If it's healthy, indicate that.
-        Return your analysis STRICTLY as a raw JSON object with no markdown formatting or backticks. Example:
-        {
-          "is_plant": true,
-          "disease": "Potato - Early Blight",
-          "confidence_percent": 95,
-          "top_predictions": [
-            {"disease": "Potato - Early Blight", "confidence_percent": 95},
-            {"disease": "Potato - Late Blight", "confidence_percent": 5}
-          ]
-        }
-        If the image is not a plant, crop, or leaf, set "is_plant" to false. Do NOT wrap the output in ```json ... ``` blocks.
-        """
-        import json
-        response = vision_model.generate_content([prompt, gemini_image])
-        result_text = response.text.strip()
-        
-        if result_text.startswith("```json"):
-            result_text = result_text.replace("```json", "").replace("```", "").strip()
-        elif result_text.startswith("```"):
-            result_text = result_text.replace("```", "").strip()
-            
-        ai_data = json.loads(result_text)
-        
-        if not ai_data.get("is_plant", True):
-            return JSONResponse(
-                status_code=400, 
-                content={"error": "not_a_leaf", "message": "Not a plant or leaf."}
-            )
-            
-        response_data = {
-            "disease": ai_data.get("disease", "Unknown"),
-            "confidence_percent": ai_data.get("confidence_percent", 90),
-            "top_predictions": ai_data.get("top_predictions", []),
-            "heatmap_base64": None
-        }
+        # Run new pipeline
+        diagnosis_result = pipeline.diagnose(image, want_lesions=True)
+        response_data = diagnosis_result.to_dict()
 
-    except Exception as e:
-        print("Gemini Error:", e)
-        # 2. Fallback to local PyTorch Model if Gemini fails (e.g. Rate Limit)
-        label, confidence, class_idx, top_predictions = predict(image)
-        response_data = {
-            "disease": label.replace("___", " - ").replace("_", " "),
-            "confidence_percent": round(confidence * 100, 2),
-            "top_predictions": top_predictions,
-            "heatmap_base64": None
-        }
-
-    # Save to MongoDB
-    try:
+        # Save to MongoDB
         if hasattr(app, "database"):
             disease_collection = app.database.get_collection("disease_reports")
-            # Don't save the huge heatmap to the DB for space reasons
             db_record = response_data.copy()
-            db_record["heatmap_base64"] = None
             db_record["created_at"] = datetime.now().isoformat()
             if mobile_number:
                 db_record["mobile_number"] = mobile_number
             await disease_collection.insert_one(db_record)
-    except Exception as e:
-        print(f"Error saving to MongoDB: {e}")
 
-    return JSONResponse(response_data)
+        return JSONResponse(response_data)
+    except Exception as e:
+        print(f"Error in diagnosis pipeline: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "pipeline_error", "message": str(e)}
+        )
 
 from drone.drone_analyze import analyze_drone_image
 

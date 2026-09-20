@@ -1,0 +1,417 @@
+# AgriShield unified disease taxonomy
+# ---------------------------------------------------------------------------
+# One canonical ID per (crop, condition). Every source dataset's raw folder
+# name is mapped into this space via `aliases`. This file is the single source
+# of truth for: the model's output space, the app's "diseases we detect" list
+# (Round-1 judge ask #2), and the treatment/MRL lookup keys.
+#
+# field_support:
+#   strong -> >=300 real field images in train  -> shown to farmer normally
+#   weak   -> 50-300 field images               -> shown with "low certainty" banner
+#   lab    -> lab images only (PlantVillage)    -> NEVER surfaced as a confident
+#             diagnosis in the app; kept only to stop the model force-fitting
+#             field photos into a neighbouring class.
+#
+# Keep `aliases` exhaustive. Anything unmapped is dropped loudly, not silently.
+# ---------------------------------------------------------------------------
+
+version: 2
+
+crops:
+  - {id: tomato,    name_en: Tomato,    name_hi: टमाटर,    name_kn: ಟೊಮೇಟೊ}
+  - {id: rice,      name_en: Rice,      name_hi: चावल,     name_kn: ಅಕ್ಕಿ}
+  - {id: wheat,     name_en: Wheat,     name_hi: गेहूँ,     name_kn: ಗೋಧಿ}
+  - {id: maize,     name_en: Maize,     name_hi: मक्का,     name_kn: ಮೆಕ್ಕೆಜೋಳ}
+  - {id: cotton,    name_en: Cotton,    name_hi: कपास,     name_kn: ಹತ್ತಿ}
+  - {id: sugarcane, name_en: Sugarcane, name_hi: गन्ना,     name_kn: ಕಬ್ಬು}
+  - {id: chilli,    name_en: Chilli,    name_hi: मिर्च,     name_kn: ಮೆಣಸಿನಕಾಯಿ}
+  - {id: mango,     name_en: Mango,     name_hi: आम,       name_kn: ಮಾವು}
+  - {id: grape,     name_en: Grape,     name_hi: अंगूर,     name_kn: ದ್ರಾಕ್ಷಿ}
+  - {id: potato,    name_en: Potato,    name_hi: आलू,      name_kn: ಆಲೂಗಡ್ಡೆ}
+  - {id: apple,     name_en: Apple,     name_hi: सेब,      name_kn: ಸೇಬು}
+
+classes:
+  # ---------------- TOMATO ----------------
+  - id: tomato::healthy
+    crop: tomato
+    is_healthy: true
+    field_support: strong
+    aliases:
+      plantvillage: [Tomato___healthy]
+      plantdoc: [Tomato leaf]
+      plantwild: [tomato_healthy]
+
+  - id: tomato::early_blight
+    crop: tomato
+    pathogen: Alternaria linariae
+    field_support: strong
+    confusable_with: [tomato::late_blight, tomato::septoria_leaf_spot, tomato::target_spot]
+    aliases:
+      plantvillage: [Tomato___Early_blight]
+      plantdoc: [Tomato Early blight leaf]
+      plantwild: [tomato_early_blight]
+
+  - id: tomato::late_blight
+    crop: tomato
+    pathogen: Phytophthora infestans
+    field_support: strong
+    confusable_with: [tomato::early_blight, potato::late_blight]
+    aliases:
+      plantvillage: [Tomato___Late_blight]
+      plantdoc: [Tomato leaf late blight]
+      plantwild: [tomato_late_blight]
+
+  - id: tomato::septoria_leaf_spot
+    crop: tomato
+    pathogen: Septoria lycopersici
+    field_support: weak
+    confusable_with: [tomato::early_blight, tomato::bacterial_spot]
+    aliases:
+      plantvillage: [Tomato___Septoria_leaf_spot]
+      plantdoc: [Tomato Septoria leaf spot]
+      plantwild: [tomato_septoria_leaf_spot]
+
+  - id: tomato::bacterial_spot
+    crop: tomato
+    pathogen: Xanthomonas spp.
+    field_support: weak
+    confusable_with: [tomato::septoria_leaf_spot, tomato::target_spot]
+    aliases:
+      plantvillage: [Tomato___Bacterial_spot]
+      plantdoc: [Tomato leaf bacterial spot]
+      plantwild: [tomato_bacterial_spot]
+
+  - id: tomato::leaf_curl_virus
+    crop: tomato
+    pathogen: Tomato yellow leaf curl virus
+    field_support: strong
+    aliases:
+      plantvillage: [Tomato___Tomato_Yellow_Leaf_Curl_Virus]
+      plantdoc: [Tomato leaf yellow virus]
+      plantwild: [tomato_yellow_leaf_curl_virus]
+
+  - id: tomato::mosaic_virus
+    crop: tomato
+    pathogen: Tomato mosaic virus
+    field_support: weak
+    aliases:
+      plantvillage: [Tomato___Tomato_mosaic_virus]
+      plantdoc: [Tomato leaf mosaic virus]
+      plantwild: [tomato_mosaic_virus]
+
+  - id: tomato::spider_mites
+    crop: tomato
+    pathogen: Tetranychus urticae
+    is_pest: true
+    field_support: lab
+    aliases:
+      plantvillage: [Tomato___Spider_mites Two-spotted_spider_mite]
+      plantwild: [tomato_spider_mites]
+
+  - id: tomato::leaf_mold
+    crop: tomato
+    pathogen: Passalora fulva
+    field_support: lab
+    aliases:
+      plantvillage: [Tomato___Leaf_Mold]
+      plantdoc: [Tomato mold leaf]
+      plantwild: [tomato_leaf_mold]
+
+  - id: tomato::target_spot
+    crop: tomato
+    pathogen: Corynespora cassiicola
+    field_support: lab
+    confusable_with: [tomato::early_blight, tomato::bacterial_spot]
+    aliases:
+      plantvillage: [Tomato___Target_Spot]
+
+  # ---------------- RICE ----------------
+  - id: rice::healthy
+    crop: rice
+    is_healthy: true
+    field_support: strong
+    aliases:
+      plantwild: [rice_healthy]
+      rice_leaf_diseases: [Healthy]
+
+  - id: rice::blast
+    crop: rice
+    pathogen: Magnaporthe oryzae
+    field_support: strong
+    confusable_with: [rice::brown_spot]
+    aliases:
+      plantwild: [rice_blast]
+      rice_leaf_diseases: [Leaf blast, Blast]
+
+  - id: rice::bacterial_leaf_blight
+    crop: rice
+    pathogen: Xanthomonas oryzae pv. oryzae
+    field_support: strong
+    confusable_with: [rice::brown_spot]
+    aliases:
+      plantwild: [rice_bacterial_leaf_blight]
+      rice_leaf_diseases: [Bacterial leaf blight]
+
+  - id: rice::brown_spot
+    crop: rice
+    pathogen: Bipolaris oryzae
+    field_support: strong
+    confusable_with: [rice::blast, rice::bacterial_leaf_blight]
+    aliases:
+      plantwild: [rice_brown_spot]
+      rice_leaf_diseases: [Brown spot]
+
+  - id: rice::sheath_blight
+    crop: rice
+    pathogen: Rhizoctonia solani
+    field_support: weak
+    aliases:
+      plantwild: [rice_sheath_blight]
+
+  # ---------------- WHEAT ----------------
+  - id: wheat::healthy
+    crop: wheat
+    is_healthy: true
+    field_support: weak
+    aliases:
+      plantwild: [wheat_healthy]
+
+  - id: wheat::leaf_rust
+    crop: wheat
+    pathogen: Puccinia triticina
+    field_support: strong
+    confusable_with: [wheat::stripe_rust, maize::common_rust]
+    aliases:
+      plantwild: [wheat_leaf_rust, wheat_brown_rust]
+
+  - id: wheat::stripe_rust
+    crop: wheat
+    pathogen: Puccinia striiformis
+    field_support: weak
+    confusable_with: [wheat::leaf_rust]
+    aliases:
+      plantwild: [wheat_stripe_rust, wheat_yellow_rust]
+
+  - id: wheat::septoria_blotch
+    crop: wheat
+    pathogen: Zymoseptoria tritici
+    field_support: weak
+    aliases:
+      plantwild: [wheat_septoria]
+
+  # ---------------- MAIZE ----------------
+  - id: maize::healthy
+    crop: maize
+    is_healthy: true
+    field_support: strong
+    aliases:
+      plantvillage: [Corn_(maize)___healthy]
+      plantdoc: [Corn leaf]
+      plantwild: [corn_healthy]
+
+  - id: maize::northern_leaf_blight
+    crop: maize
+    pathogen: Exserohilum turcicum
+    field_support: strong
+    confusable_with: [maize::gray_leaf_spot]
+    aliases:
+      plantvillage: ["Corn_(maize)___Northern_Leaf_Blight"]
+      plantdoc: [Corn leaf blight]
+      plantwild: [corn_northern_leaf_blight]
+
+  - id: maize::gray_leaf_spot
+    crop: maize
+    pathogen: Cercospora zeae-maydis
+    field_support: weak
+    confusable_with: [maize::northern_leaf_blight]
+    aliases:
+      plantvillage: ["Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot"]
+      plantdoc: [Corn Gray leaf spot]
+      plantwild: [corn_gray_leaf_spot]
+
+  - id: maize::common_rust
+    crop: maize
+    pathogen: Puccinia sorghi
+    field_support: strong
+    confusable_with: [wheat::leaf_rust]
+    aliases:
+      plantvillage: ["Corn_(maize)___Common_rust_"]
+      plantdoc: [Corn rust leaf]
+      plantwild: [corn_rust]
+
+  # ---------------- COTTON ----------------
+  - id: cotton::healthy
+    crop: cotton
+    is_healthy: true
+    field_support: weak
+    aliases:
+      cotton_disease: [Healthy leaf, fresh cotton leaf]
+
+  - id: cotton::bacterial_blight
+    crop: cotton
+    pathogen: Xanthomonas citri pv. malvacearum
+    field_support: weak
+    aliases:
+      cotton_disease: [Bacterial blight]
+
+  - id: cotton::leaf_curl_virus
+    crop: cotton
+    pathogen: Cotton leaf curl virus
+    field_support: weak
+    aliases:
+      cotton_disease: [Curl virus, Leaf curl]
+
+  # ---------------- SUGARCANE ----------------
+  - id: sugarcane::healthy
+    crop: sugarcane
+    is_healthy: true
+    field_support: weak
+    aliases:
+      sugarcane_disease: [Healthy]
+
+  - id: sugarcane::red_rot
+    crop: sugarcane
+    pathogen: Colletotrichum falcatum
+    field_support: weak
+    aliases:
+      sugarcane_disease: [RedRot, Red Rot]
+
+  - id: sugarcane::rust
+    crop: sugarcane
+    pathogen: Puccinia melanocephala
+    field_support: weak
+    aliases:
+      sugarcane_disease: [Rust]
+
+  # ---------------- CHILLI ----------------
+  - id: chilli::healthy
+    crop: chilli
+    is_healthy: true
+    field_support: weak
+    aliases:
+      chilli_disease: [healthy]
+
+  - id: chilli::leaf_spot
+    crop: chilli
+    pathogen: Cercospora capsici
+    field_support: weak
+    aliases:
+      chilli_disease: [leaf spot]
+
+  - id: chilli::leaf_curl
+    crop: chilli
+    pathogen: Chilli leaf curl virus
+    field_support: weak
+    aliases:
+      chilli_disease: [leaf curl]
+
+  # ---------------- MANGO ----------------
+  - id: mango::healthy
+    crop: mango
+    is_healthy: true
+    field_support: weak
+    aliases:
+      mango_leaf: [Healthy]
+
+  - id: mango::anthracnose
+    crop: mango
+    pathogen: Colletotrichum gloeosporioides
+    field_support: weak
+    aliases:
+      mango_leaf: [Anthracnose]
+      plantwild: [mango_anthracnose]
+
+  - id: mango::powdery_mildew
+    crop: mango
+    pathogen: Oidium mangiferae
+    field_support: weak
+    aliases:
+      mango_leaf: [Powdery Mildew]
+
+  # ---------------- GRAPE ----------------
+  - id: grape::healthy
+    crop: grape
+    is_healthy: true
+    field_support: weak
+    aliases:
+      plantvillage: [Grape___healthy]
+      plantdoc: [grape leaf]
+
+  - id: grape::downy_mildew
+    crop: grape
+    pathogen: Plasmopara viticola
+    field_support: weak
+    aliases:
+      plantwild: [grape_downy_mildew]
+
+  - id: grape::black_rot
+    crop: grape
+    pathogen: Guignardia bidwellii
+    field_support: lab
+    aliases:
+      plantvillage: [Grape___Black_rot]
+      plantdoc: [grape leaf black rot]
+
+  # ---------------- POTATO ----------------
+  - id: potato::healthy
+    crop: potato
+    is_healthy: true
+    field_support: weak
+    aliases:
+      plantvillage: [Potato___healthy]
+      plantdoc: [Potato leaf]
+
+  - id: potato::early_blight
+    crop: potato
+    pathogen: Alternaria solani
+    field_support: weak
+    confusable_with: [tomato::early_blight, potato::late_blight]
+    aliases:
+      plantvillage: [Potato___Early_blight]
+      plantdoc: [Potato leaf early blight]
+      plantwild: [potato_early_blight]
+
+  - id: potato::late_blight
+    crop: potato
+    pathogen: Phytophthora infestans
+    field_support: strong
+    confusable_with: [tomato::late_blight, potato::early_blight]
+    aliases:
+      plantvillage: [Potato___Late_blight]
+      plantdoc: [Potato leaf late blight]
+      plantwild: [potato_late_blight]
+
+  # ---------------- APPLE ----------------
+  - id: apple::healthy
+    crop: apple
+    is_healthy: true
+    field_support: strong
+    aliases:
+      plantvillage: [Apple___healthy]
+      plant_pathology_2021: [healthy]
+
+  - id: apple::scab
+    crop: apple
+    pathogen: Venturia inaequalis
+    field_support: strong
+    aliases:
+      plantvillage: [Apple___Apple_scab]
+      plant_pathology_2021: [scab]
+      plantdoc: [Apple Scab Leaf]
+
+  - id: apple::cedar_rust
+    crop: apple
+    pathogen: Gymnosporangium juniperi-virginianae
+    field_support: weak
+    aliases:
+      plantvillage: [Apple___Cedar_apple_rust]
+      plant_pathology_2021: [rust]
+      plantdoc: [Apple rust leaf]
+
+  - id: apple::frogeye_leaf_spot
+    crop: apple
+    pathogen: Botryosphaeria obtusa
+    field_support: weak
+    aliases:
+      plantvillage: [Apple___Black_rot]
+      plant_pathology_2021: [frog_eye_leaf_spot]
