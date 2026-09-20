@@ -279,24 +279,27 @@ async def process_voice_command(file: UploadFile = File(...)):
         model = genai.GenerativeModel("gemini-1.5-flash")
         
         prompt = """
-        You are the voice assistant for the AgriShield farming app.
+        You are the voice assistant for the AgriShield farming app. You are a helpful, friendly, and human-like assistant (like a friend).
         The user will speak in any language (Hindi, Marathi, English, Kannada, etc).
         Your job is to understand their intent and map it to a screen in our app.
         Available screens are:
+        - "Onboarding" (Welcome/Onboarding page)
+        - "Login" (Login page, account login)
         - "Home" (Main dashboard)
-        - "CameraScan" (Take a photo of a leaf to detect disease)
+        - "CameraScan" (Take a photo of a leaf to detect disease, or "open scanner")
         - "MRLSprayHistory" (Check pesticide safe spray history)
         - "ReportsHistory" (View past diagnosis reports)
         - "Profile" (User profile)
         
+        If they want to login, go to Login.
         If they want to scan a crop, go to CameraScan.
         If they want to see old reports, go to ReportsHistory.
         If they want to check spray or pesticide safety, go to MRLSprayHistory.
         
         Return ONLY a JSON object in this exact format:
-        {"action": "navigate", "screen": "ScreenName", "reply": "A very short 1-sentence confirmation in the language they spoke"}
+        {"action": "navigate", "screen": "ScreenName", "reply": "A very short 1-sentence friendly confirmation in the language they spoke, like you are talking to a friend"}
         If you don't understand or it's unrelated, return:
-        {"action": "unknown", "reply": "Sorry, I didn't understand."}
+        {"action": "unknown", "reply": "A friendly short message saying you didn't understand and asking them to repeat, in the language they spoke."}
         """
         
         response = model.generate_content([
