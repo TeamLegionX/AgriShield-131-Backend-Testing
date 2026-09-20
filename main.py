@@ -264,6 +264,56 @@ async def diagnose(file: UploadFile = File(...), mobile_number: str = Form(None)
             content={"error": "pipeline_error", "message": str(e)}
         )
 
+import base64
+import google.generativeai as genai
+import os
+import json
+
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+
+@app.post("/voice-command")
+async def process_voice_command(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        
+        prompt = """
+        You are the voice assistant for the AgriShield farming app.
+        The user will speak in any language (Hindi, Marathi, English, Kannada, etc).
+        Your job is to understand their intent and map it to a screen in our app.
+        Available screens are:
+        - "Home" (Main dashboard)
+        - "CameraScan" (Take a photo of a leaf to detect disease)
+        - "MRLSprayHistory" (Check pesticide safe spray history)
+        - "ReportsHistory" (View past diagnosis reports)
+        - "Profile" (User profile)
+        
+        If they want to scan a crop, go to CameraScan.
+        If they want to see old reports, go to ReportsHistory.
+        If they want to check spray or pesticide safety, go to MRLSprayHistory.
+        
+        Return ONLY a JSON object in this exact format:
+        {"action": "navigate", "screen": "ScreenName", "reply": "A very short 1-sentence confirmation in the language they spoke"}
+        If you don't understand or it's unrelated, return:
+        {"action": "unknown", "reply": "Sorry, I didn't understand."}
+        """
+        
+        response = model.generate_content([
+            prompt,
+            {
+                "mime_type": file.content_type or "audio/m4a",
+                "data": contents
+            }
+        ])
+        
+        response_text = response.text.replace("```json", "").replace("```", "").strip()
+        return json.loads(response_text)
+        
+    except Exception as e:
+        print(f"Error processing voice: {e}")
+        return JSONResponse(status_code=500, content={"action": "error", "message": str(e)})
+
 from drone.drone_analyze import analyze_drone_image
 
 @app.post("/drone-analyze")
