@@ -186,7 +186,7 @@ import os
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-vision_model = genai.GenerativeModel('gemini-flash-latest')
+vision_model = genai.GenerativeModel('gemini-1.5-flash')
 
 @app.post("/diagnose")
 async def diagnose(file: UploadFile = File(...), mobile_number: str = Form(None)):
@@ -222,7 +222,7 @@ async def diagnose(file: UploadFile = File(...), mobile_number: str = Form(None)
         {"decision": "reject_quality"}
         """
 
-        model = genai.GenerativeModel("gemini-flash-latest")
+        model = genai.GenerativeModel("gemini-1.5-flash")
         response = model.generate_content([
             diagnosis_prompt,
             {"mime_type": content_type, "data": image_b64}
@@ -261,7 +261,7 @@ async def process_voice_command(file: UploadFile = File(...), currentScreen: str
     try:
         contents = await file.read()
         
-        model = genai.GenerativeModel("gemini-flash-latest")
+        model = genai.GenerativeModel("gemini-1.5-flash")
         
         prompt = f"""
         You are the voice assistant for the AgriShield farming app. You are a helpful, empathetic, and highly intelligent human-like friend.
