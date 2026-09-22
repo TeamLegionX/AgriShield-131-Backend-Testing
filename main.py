@@ -2,57 +2,9 @@ from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel
 from datetime import datetime, timedelta
-from fastapi.responses import JSONResponse, HTMLResponse
-from pydantic import BaseModel
 from PIL import Image
 import io
-
-# --- AgriShield Vision v2 Integration ---
-import torch
-torch.set_grad_enabled(False)
-torch.set_num_threads(1)
-
-pipeline_instance = None
-
-def get_pipeline():
-    global pipeline_instance
-    if pipeline_instance is None:
-        import torchvision.transforms as T
-        from agrishield.taxonomy import load_taxonomy
-        from agrishield.models.student import build_student, StudentConfig, ExportWrapper
-        from agrishield.inference.pipeline import DiagnosisPipeline
-        from agrishield.inference.calibration import CalibrationArtifacts
-        
-        print("Initializing AgriShield Vision v2 Pipeline (Dummy/Random Weights)...")
-        tax = load_taxonomy("configs/taxonomy.yaml")
-        student_cfg = StudentConfig(
-            backbone="mnv4s", n_classes=tax.n_classes, n_crops=tax.n_crops, class_to_crop=tax.class_to_crop, pretrained=False
-        )
-        model = build_student(student_cfg)
-        wrapper = ExportWrapper(model)
-        wrapper.eval()
-        
-        calibration = CalibrationArtifacts(
-            temperature=1.0,
-            confident_threshold=0.8,
-            tentative_threshold=0.5,
-            ece_before=0.0,
-            ece_after=0.0,
-            coverage_at_confident=1.0
-        )
-        transform = T.Compose([
-            T.Resize((224, 224)),
-            T.ToTensor()
-        ])
-        pipeline_instance = DiagnosisPipeline(
-            model=wrapper,
-            taxonomy=tax,
-            calibration=calibration,
-            transform=transform,
-            device="cpu"
-        )
-        print("Pipeline initialized successfully.")
-    return pipeline_instance
+import base64
 
 
 app = FastAPI(title="AgriShield Backend")
@@ -239,26 +191,59 @@ vision_model = genai.GenerativeModel('gemini-1.5-flash')
 @app.post("/diagnose")
 async def diagnose(file: UploadFile = File(...), mobile_number: str = Form(None)):
     contents = await file.read()
-    image = Image.open(io.BytesIO(contents)).convert("RGB")
 
     try:
-        # Run new pipeline
-        pipeline = get_pipeline()
-        diagnosis_result = pipeline.diagnose(image, want_lesions=True)
-        response_data = diagnosis_result.to_dict()
+        # Use Gemini Vision for instant, accurate diagnosis - no heavy ML model needed
+        image_b64 = base64.b64encode(contents).decode("utf-8")
+        content_type = file.content_type or "image/jpeg"
 
-        # Save to MongoDB
-        if hasattr(app, "database"):
-            disease_collection = app.database.get_collection("disease_reports")
-            db_record = response_data.copy()
-            db_record["created_at"] = datetime.now().isoformat()
-            if mobile_number:
-                db_record["mobile_number"] = mobile_number
-            await disease_collection.insert_one(db_record)
+        diagnosis_prompt = """
+        You are an expert agricultural plant disease AI for the AgriShield app.
+        Analyze this crop leaf image and return ONLY a raw JSON object (no markdown, no code blocks).
+
+        If it IS a plant/leaf image, return:
+        {
+          "decision": "confident",
+          "primary_disease": "<disease name or Healthy>",
+          "crop": "<detected crop type, e.g. Tomato, Rice, Wheat, Unknown>",
+          "confidence": <0.0-1.0>,
+          "severity": "<None/Mild/Moderate/Severe>",
+          "affected_area_pct": <0-100>,
+          "description": "<2-3 sentence description of the disease or health status>",
+          "treatment": "<specific actionable treatment recommendation>",
+          "prevention": "<prevention tip>",
+          "is_healthy": <true/false>
+        }
+
+        If the image is NOT a plant/leaf (e.g. a selfie, random object), return:
+        {"decision": "reject_not_leaf"}
+
+        If the image is too blurry or dark to analyze:
+        {"decision": "reject_quality"}
+        """
+
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        response = model.generate_content([
+            diagnosis_prompt,
+            {"mime_type": content_type, "data": image_b64}
+        ])
+
+        response_text = response.text.replace("```json", "").replace("```", "").strip()
+        response_data = json.loads(response_text)
+
+        # Save to MongoDB if it's a real diagnosis
+        if response_data.get("decision") not in ["reject_not_leaf", "reject_quality", "reject_unknown"]:
+            if hasattr(app, "database"):
+                disease_collection = app.database.get_collection("disease_reports")
+                db_record = response_data.copy()
+                db_record["created_at"] = datetime.now().isoformat()
+                if mobile_number:
+                    db_record["mobile_number"] = mobile_number
+                await disease_collection.insert_one(db_record)
 
         return JSONResponse(response_data)
     except Exception as e:
-        print(f"Error in diagnosis pipeline: {e}")
+        print(f"Error in Gemini diagnosis: {e}")
         return JSONResponse(
             status_code=500,
             content={"error": "pipeline_error", "message": str(e)}
